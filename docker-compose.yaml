@@ -1,0 +1,9 @@
+services:
+
+  node:
+    container_name: "node"
+    image: willybrownhair/node-20-pnpm-ffmpeg
+    volumes:
+      - "./:/home/node/app"
+    working_dir: /home/node/app
+    tty: true

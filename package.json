@@ -1,0 +1,31 @@
+{
+  "name": "video-convertor",
+  "version": "0.0.1",
+  "description": "convert any video to mp4",
+  "keywords": [
+    "convertor",
+    "video"
+  ],
+  "license": "ISC",
+  "author": "willy brauner",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "sharp": "^0.32.6",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@wbe/debug": "^1.2.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.19.3"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "semi": false
+  }
+}
