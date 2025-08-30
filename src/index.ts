@@ -21,6 +21,11 @@ const _getVideoDimensions = async (inputFile) => {
   }
 }
 
+const _roundToEven = (num: number): number => {
+  const rounded = Math.round(num)
+  return rounded % 2 === 0 ? rounded : rounded + 1
+}
+
 /**
  * Convert video to a specific width
  */
@@ -37,11 +42,9 @@ const mp4convertor = async ({
   if (!width) width = originalWidth
 
   // Ensure width is even
-  if (width % 2 !== 0) width = width + 1
+  width = _roundToEven(width)
 
-  let height = Math.round((originalHeight / originalWidth) * width)
-  // Ensure height is even
-  if (height % 2 !== 0) height = height + 1
+  const height = _roundToEven((originalHeight / originalWidth) * width)
 
   if (!outputFile) {
     const filenameWithoutExt = path.basename(inputFile, path.extname(inputFile))
