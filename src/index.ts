@@ -35,7 +35,20 @@ const mp4convertor = async ({
   if (!dimensions) return
   const { originalWidth, originalHeight } = dimensions
   if (!width) width = originalWidth
-  const height = Math.round((originalHeight / originalWidth) * width)
+
+  // Ensure width is even
+  if (width % 2 !== 0) width = width + 1
+
+  let height = Math.round((originalHeight / originalWidth) * width)
+  // Ensure height is even
+  if (height % 2 !== 0) height = height + 1
+
+  if (!outputFile) {
+    const filenameWithoutExt = path.basename(inputFile, path.extname(inputFile))
+    const filename = `${filenameWithoutExt}-${width}x${height}.mp4`
+    const outputDir = path.dirname(inputFile)
+    outputFile = path.join(outputDir, filename)
+  }
 
   console.log('args', {
     width,
@@ -45,13 +58,6 @@ const mp4convertor = async ({
     inputFile,
     outputFile,
   })
-
-  if (!outputFile) {
-    const filenameWithoutExt = path.basename(inputFile, path.extname(inputFile))
-    const filename = `${filenameWithoutExt}-${width}x${height}.mp4`
-    const outputDir = path.dirname(inputFile)
-    outputFile = path.join(outputDir, filename)
-  }
 
   try {
     await execPromise(
