@@ -8,9 +8,9 @@ import path from 'path'
 
 const execPromise = promisify(exec)
 const renamePromise = promisify(fs.rename)
-const argv = yargs(hideBin(process.argv)).argv
+const argv = yargs(hideBin(process.argv)).argv as any
 
-const _getVideoDimensions = async (inputFile) => {
+const _getVideoDimensions = async (inputFile: any) => {
   try {
     const { stdout } = await execPromise(
       `ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputFile}"`,
@@ -37,6 +37,7 @@ const mp4convertor = async ({
   bitrate = argv.bitrate || '1M',
   inputFile = argv._[0] ? argv._[0] : process.cwd(),
   outputFile = argv.output || argv.o,
+  mute = argv.mute || false,
 } = {}) => {
   const dimensions = await _getVideoDimensions(inputFile)
   if (!dimensions) return
@@ -86,6 +87,7 @@ const mp4convertor = async ({
     inputFile,
     outputFile,
     isOverwrite,
+    mute,
   })
 
   try {
@@ -96,8 +98,10 @@ const mp4convertor = async ({
         )
       : inputFile
 
+    const audioOptions = mute ? '-an' : '-c:a aac -b:a 192k'
+
     await execPromise(
-      `ffmpeg -y -i "${sourceFile}" -vf "scale=${width}:${height}:flags=lanczos" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p -threads 2 -an "${outputFile}"`,
+      `ffmpeg -y -i "${sourceFile}" -vf "scale=${width}:${height}:flags=lanczos" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
     )
     console.log(chalk.green(`Video has been created: ${outputFile}`))
   } catch (error) {
