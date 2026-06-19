@@ -5,10 +5,29 @@ import chalk from 'chalk'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import path from 'path'
+import { glob } from 'glob'
 
 const execPromise = promisify(exec)
 const renamePromise = promisify(fs.rename)
 const argv = yargs(hideBin(process.argv)).argv as any
+
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv', '.mts', '.m2ts']
+
+const _resolveInputFiles = async (input: string): Promise<string[]> => {
+  // Directory → all video files inside
+  if (fs.existsSync(input) && fs.statSync(input).isDirectory()) {
+    const files = fs.readdirSync(input)
+      .filter(f => VIDEO_EXTENSIONS.includes(path.extname(f).toLowerCase()))
+      .map(f => path.join(input, f))
+    return files
+  }
+  // Glob pattern
+  if (input.includes('*') || input.includes('?') || input.includes('{')) {
+    return glob(input)
+  }
+  // Single file
+  return [input]
+}
 
 const _getVideoDimensions = async (inputFile: any) => {
   try {
@@ -34,7 +53,7 @@ const _roundToEven = (num: number): number => {
 const mp4convertor = async ({
   width = argv.width || argv.w,
   crf = argv.crf || 23,
-  bitrate = argv.bitrate || '1M',
+  bitrate = argv.bitrate || '2M',
   inputFile = argv._[0] ? argv._[0] : process.cwd(),
   outputFile = argv.output || argv.o,
   mute = argv.mute || false,
@@ -110,8 +129,22 @@ const mp4convertor = async ({
 }
 
 /**
- * Start conversion for one file
+ * Start conversion — single file, directory, or glob
  */
 ;(async () => {
-  mp4convertor()
+  const rawInput = argv._[0] ? String(argv._[0]) : process.cwd()
+  const files = await _resolveInputFiles(rawInput)
+
+  if (files.length === 0) {
+    console.log(chalk.yellow('No video files found.'))
+    return
+  }
+
+  if (files.length > 1) {
+    console.log(chalk.blue(`Converting ${files.length} files…`))
+  }
+
+  for (const file of files) {
+    await mp4convertor({ inputFile: file })
+  }
 })()
