@@ -47,6 +47,21 @@ const _roundToEven = (num: number): number => {
   return rounded % 2 === 0 ? rounded : rounded + 1
 }
 
+const _buildAtempoChain = (speed: number): string => {
+  const filters: string[] = []
+  let remaining = speed
+  while (remaining > 2.0) {
+    filters.push('atempo=2.0')
+    remaining /= 2.0
+  }
+  while (remaining < 0.5) {
+    filters.push('atempo=0.5')
+    remaining /= 0.5
+  }
+  filters.push(`atempo=${remaining}`)
+  return filters.join(',')
+}
+
 /**
  * Convert video to a specific width
  */
@@ -57,6 +72,7 @@ const mp4convertor = async ({
   inputFile = argv._[0] ? argv._[0] : process.cwd(),
   outputFile = argv.output || argv.o,
   mute = argv.mute || false,
+  speed = argv.speed || argv.s || 1,
 } = {}) => {
   const dimensions = await _getVideoDimensions(inputFile)
   if (!dimensions) return
@@ -72,9 +88,10 @@ const mp4convertor = async ({
 
   if (!outputFile || typeof outputFile === 'boolean') {
     const filenameWithoutExt = path.basename(inputFile, path.extname(inputFile))
+    const speedSuffix = speed !== 1 ? `-${speed}x` : ''
     const filename = isOverwrite
       ? `${filenameWithoutExt}.mp4`
-      : `${filenameWithoutExt}-${width}x${height}.mp4`
+      : `${filenameWithoutExt}-${width}x${height}${speedSuffix}.mp4`
     const outputDir = path.dirname(inputFile)
     outputFile = path.join(outputDir, filename)
   }
@@ -107,6 +124,7 @@ const mp4convertor = async ({
     outputFile,
     isOverwrite,
     mute,
+    speed,
   })
 
   try {
@@ -117,10 +135,20 @@ const mp4convertor = async ({
         )
       : inputFile
 
-    const audioOptions = mute ? '-an' : '-c:a aac -b:a 192k'
+    const ptsFilter = speed !== 1 ? `,setpts=${1 / speed}*PTS` : ''
+    const vf = `scale=${width}:${height}:flags=lanczos${ptsFilter}`
+
+    let audioOptions: string
+    if (mute) {
+      audioOptions = '-an'
+    } else if (speed !== 1) {
+      audioOptions = `-c:a aac -b:a 192k -af "${_buildAtempoChain(speed)}"`
+    } else {
+      audioOptions = '-c:a aac -b:a 192k'
+    }
 
     await execPromise(
-      `ffmpeg -y -i "${sourceFile}" -vf "scale=${width}:${height}:flags=lanczos" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
+      `ffmpeg -y -i "${sourceFile}" -vf "${vf}" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
     )
     console.log(chalk.green(`Video has been created: ${outputFile}`))
   } catch (error) {
