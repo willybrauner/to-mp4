@@ -32,9 +32,20 @@ const _resolveInputFiles = async (input: string): Promise<string[]> => {
 const _getVideoDimensions = async (inputFile: any) => {
   try {
     const { stdout } = await execPromise(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputFile}"`,
+      `ffprobe -v error -select_streams v:0 -show_streams -of json "${inputFile}"`,
     )
-    const [originalWidth, originalHeight] = stdout.trim().split(',').map(Number)
+    const data = JSON.parse(stdout)
+    const stream = data.streams[0]
+    let originalWidth: number = stream.width
+    let originalHeight: number = stream.height
+    // tags.rotate = older format (MOV/MP4 atoms), side_data_list = newer Display Matrix format
+    const tagRotate = parseInt(stream.tags?.rotate ?? '0', 10)
+    const sideDataRotation = stream.side_data_list?.find((d: any) => 'rotation' in d)?.rotation ?? 0
+    const rotate = tagRotate || sideDataRotation
+    // ffmpeg auto-rotates by default, so swap dimensions to match display orientation
+    if (Math.abs(rotate) === 90 || Math.abs(rotate) === 270) {
+      ;[originalWidth, originalHeight] = [originalHeight, originalWidth]
+    }
     return { originalWidth, originalHeight }
   } catch (error) {
     console.error(`Error getting video dimensions: ${error}`)
