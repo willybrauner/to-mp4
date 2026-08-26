@@ -6,6 +6,8 @@ import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import path from 'path'
 import { glob } from 'glob'
+import ora from 'ora'
+import { log } from './log'
 
 const execPromise = promisify(exec)
 const renamePromise = promisify(fs.rename)
@@ -126,17 +128,15 @@ const mp4convertor = async ({
     }
   }
 
-  console.log('args', {
-    width,
-    height,
-    crf,
-    bitrate,
-    inputFile,
-    outputFile,
-    isOverwrite,
-    mute,
-    speed,
-  })
+  console.log(chalk.cyan(`\n${path.basename(inputFile)}`))
+  log.field('width', width)
+  log.field('height', height)
+  log.field('crf', crf)
+  log.field('bitrate', bitrate)
+  log.field('output', outputFile)
+  log.field('overwrite', isOverwrite)
+  log.field('mute', mute)
+  log.field('speed', speed)
 
   try {
     const sourceFile = isOverwrite
@@ -158,10 +158,30 @@ const mp4convertor = async ({
       audioOptions = '-c:a aac -b:a 192k'
     }
 
-    await execPromise(
-      `ffmpeg -y -i "${sourceFile}" -vf "${vf}" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
+    const spinner = ora('Converting…').start()
+    try {
+      await execPromise(
+        `ffmpeg -y -i "${sourceFile}" -vf "${vf}" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
+      )
+    } finally {
+      spinner.stop()
+    }
+
+    const originalSize = fs.statSync(sourceFile).size / 1000
+    const newSize = fs.statSync(outputFile).size / 1000
+    const diff = newSize - originalSize
+    const isDecreased = diff < 0
+    const isEqual = diff === 0
+    const diffSymbol = isDecreased ? '↓' : isEqual ? '=' : '↑'
+    const diffColor = isDecreased ? 'green' : isEqual ? 'yellow' : 'red'
+    const diffPercent = originalSize === 0 ? 0 : (diff / originalSize) * 100
+
+    console.log(chalk.gray(`\n  ${originalSize.toFixed(2)} KB`))
+    console.log(
+      `  ${newSize.toFixed(2)} KB `,
+      chalk[diffColor](`${diffSymbol} ${diff.toFixed(2)} KB (${diffPercent.toFixed(1)}%)`),
     )
-    console.log(chalk.green(`Video has been created: ${outputFile}`))
+    console.log(chalk.green(`✓ Video has been created: ${outputFile}\n`))
   } catch (error) {
     console.error(`Error converting video: ${error}`)
   }
