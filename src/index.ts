@@ -81,7 +81,9 @@ const _buildAtempoChain = (speed: number): string => {
 const mp4convertor = async ({
   width = argv.width || argv.w,
   crf = argv.crf || 23,
-  bitrate = argv.bitrate || '2M',
+  // no cap by default: crf alone sets the quality, a cap smears soft gradients
+  bitrate = argv.bitrate,
+  fps = argv.fps,
   inputFile = argv._[0] ? argv._[0] : process.cwd(),
   outputFile = argv.output || argv.o,
   mute = argv.mute || false,
@@ -132,7 +134,8 @@ const mp4convertor = async ({
   log.field('width', width)
   log.field('height', height)
   log.field('crf', crf)
-  log.field('bitrate', bitrate)
+  log.field('bitrate', bitrate ?? 'none')
+  log.field('fps', fps ?? 'source')
   log.field('output', outputFile)
   log.field('overwrite', isOverwrite)
   log.field('mute', mute)
@@ -149,6 +152,9 @@ const mp4convertor = async ({
     const ptsFilter = speed !== 1 ? `,setpts=${1 / speed}*PTS` : ''
     const vf = `scale=${width}:${height}:flags=lanczos${ptsFilter}`
 
+    const bitrateOption = bitrate ? `-b:v ${bitrate}` : ''
+    const fpsOption = fps ? `-r ${fps}` : ''
+
     let audioOptions: string
     if (mute) {
       audioOptions = '-an'
@@ -161,7 +167,7 @@ const mp4convertor = async ({
     const spinner = ora('Converting…').start()
     try {
       await execPromise(
-        `ffmpeg -y -i "${sourceFile}" -vf "${vf}" -c:v libx264 -crf ${crf} -preset slow -b:v ${bitrate} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
+        `ffmpeg -y -i "${sourceFile}" -vf "${vf}" -c:v libx264 -crf ${crf} -preset slow ${bitrateOption} ${fpsOption} -pix_fmt yuv420p ${audioOptions} -threads 2 "${outputFile}"`,
       )
     } finally {
       spinner.stop()
