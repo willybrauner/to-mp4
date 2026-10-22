@@ -19,6 +19,8 @@ npm i
 npx tsx ./src/index.ts {path-to-video} --width 1280 --crf 25 --bitrate '400K'
 ```
 
+Run `npx tsx ./src/index.ts --help` to list all available options.
+
 `--bitrate` caps the video bitrate (no cap by default, `--crf` alone sets the quality). `--fps` sets the output frame rate (source rate by default).
 
 ## With docker

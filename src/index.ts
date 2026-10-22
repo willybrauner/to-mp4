@@ -11,7 +11,33 @@ import { log } from './log'
 
 const execPromise = promisify(exec)
 const renamePromise = promisify(fs.rename)
-const argv = yargs(hideBin(process.argv)).argv as any
+const argv = yargs(hideBin(process.argv))
+  .scriptName('tomp4')
+  .usage('$0 [input] [options]\n\nConvert a video file, a directory or a glob pattern to MP4.')
+  .positional('input', {
+    describe: 'Video file, directory or glob pattern (default: current directory)',
+  })
+  .option('width', { alias: 'w', describe: 'Output width in px, height keeps the aspect ratio (default: source width)' })
+  .option('crf', { describe: 'Constant Rate Factor, lower is better quality (default: 23)' })
+  .option('bitrate', { describe: "Cap the video bitrate, e.g. '400K' (default: no cap)" })
+  .option('fps', { describe: 'Output frame rate (default: source frame rate)' })
+  .option('speed', { alias: 's', describe: 'Playback speed multiplier, e.g. 2 or 0.5 (default: 1)' })
+  .option('mute', { describe: 'Remove the audio track (default: false)' })
+  .option('output', {
+    alias: 'o',
+    describe: 'Output file path (default: {name}-{width}x{height}.mp4 next to the input). Note: also enables overwrite mode',
+  })
+  .option('overwrite', {
+    describe: 'Write {name}.mp4 and rename the original file to {name}-original.{ext}',
+  })
+  .example('$0 video.mov --width 1280 --crf 25', 'Resize and compress a video')
+  .example('$0 video.mov --speed 2 --mute', 'Speed up 2x without audio')
+  .example('$0 ./videos', 'Convert every video of a directory')
+  .example("$0 './videos/*.mov'", 'Convert files matching a glob pattern')
+  .help('help')
+  .alias('help', 'h')
+  .version(false)
+  .wrap(Math.min(100, process.stdout.columns || 100)).argv as any
 
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv', '.mts', '.m2ts']
 
